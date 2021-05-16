@@ -22,10 +22,13 @@ model Deck {
 
 model Card {
   id        String @id @default(uuid()) @db.Uuid
+  position  Int
   frontText String
   backText  String
   deck      Deck   @relation(fields: [deckId], references: [id])
   deckId    String @db.Uuid
+
+  @@unique([position, deckId])
 }
 
 model User {

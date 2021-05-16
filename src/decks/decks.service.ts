@@ -22,9 +22,13 @@ export class DecksService {
         title,
         description,
         visibility,
-        cards: { createMany: { data: cards } },
+        cards: {
+          createMany: {
+            data: cards.map((card, position) => ({ ...card, position })),
+          },
+        },
       },
-      include: { cards: true },
+      include: { cards: { orderBy: { position: 'asc' } } },
     });
   }
 
@@ -33,52 +37,59 @@ export class DecksService {
   }
 
   findOne(where: Prisma.DeckWhereUniqueInput): Promise<Deck | null> {
-    return this.prisma.deck.findUnique({ where, include: { cards: true } });
+    return this.prisma.deck.findUnique({
+      where,
+      include: { cards: { orderBy: { position: 'asc' } } },
+    });
   }
 
   async update(id: string, dto: UpdateDeckDto): Promise<Deck> {
-    const updatedCardIds: string[] = [];
-
     const updatedCards: Prisma.CardUpsertWithWhereUniqueWithoutDeckInput[] = [];
     const createdCards: Prisma.CardCreateWithoutDeckInput[] = [];
 
-    dto.cards.forEach((card) => {
-      const cardData = { frontText: card.frontText, backText: card.backText };
+    dto.cards.forEach((card, position) => {
+      const cardData = {
+        frontText: card.frontText,
+        backText: card.backText,
+        position,
+      };
       if (card.id !== undefined) {
         updatedCards.push({
           where: { id: card.id },
-          create: card,
+          create: { ...card, position },
           update: cardData,
         });
-        updatedCardIds.push(card.id);
       } else {
         createdCards.push(cardData);
       }
     });
 
-    return this.prisma.deck.update({
-      where: { id },
-      data: {
-        title: dto.title,
-        description: dto.description,
-        visibility: dto.visibility,
-        cards: {
-          // Delete cards which are no longer in the deck
-          deleteMany: { id: { notIn: updatedCardIds } },
-          // Update existing cards that are still in the deck
-          upsert: updatedCards,
-          // Add the new cards
-          create: createdCards,
+    const [, deck] = await this.prisma.$transaction([
+      this.prisma.card.deleteMany({ where: { deckId: id } }),
+      this.prisma.deck.update({
+        where: { id },
+        data: {
+          title: dto.title,
+          description: dto.description,
+          visibility: dto.visibility,
+          cards: {
+            // Update existing cards that are still in the deck
+            upsert: updatedCards,
+            // Add the new cards
+            create: createdCards,
+          },
         },
-      },
-      include: { cards: true },
-    });
+        include: { cards: { orderBy: { position: 'asc' } } },
+      }),
+    ]);
+
+    return deck;
   }
 
   async remove(where: Prisma.DeckWhereUniqueInput): Promise<Deck> {
     const [, deck] = await this.prisma.$transaction([
       this.prisma.card.deleteMany({ where: { deckId: where.id } }),
-      this.prisma.deck.delete({ where, include: { cards: true } }),
+      this.prisma.deck.delete({ where }),
     ]);
     return deck;
   }
