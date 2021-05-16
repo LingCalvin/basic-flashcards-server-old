@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerConfigService } from './configs/throttler-config.service';
+import { DecksModule } from './decks/decks.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ThrottlerConfigService } from './configs/throttler-config.service';
     PrismaModule,
     ThrottlerModule.forRootAsync({ useClass: ThrottlerConfigService }),
     UsersModule,
+    DecksModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
