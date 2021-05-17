@@ -1,3 +1,4 @@
+import { DeckVisibility } from '.prisma/client';
 import {
   Body,
   Controller,
@@ -8,6 +9,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +17,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { DecksService } from './decks.service';
 import { CreateDeckDto } from './dto/create-deck.dto';
+import { FindAllDecksDto } from './dto/find-all-decks.dto';
 import { FindOneDeckDto } from './dto/find-one-deck.dto';
 import { UpdateDeckDto } from './dto/update-deck.dto';
 
@@ -36,15 +39,36 @@ export class DecksController {
   }
 
   @Get()
-  async findAll() {
-    return this.decks.findAll({});
+  async findAll(@Query() dto: FindAllDecksDto) {
+    // TODO: Do not return private decks for people who are not the author
+    const queryMode = dto.caseInsensitive ? 'insensitive' : 'default';
+    return this.decks.findAll({
+      where: {
+        title: {
+          equals: dto.titleEquals,
+          contains: dto.titleContains,
+          mode: queryMode,
+        },
+        description: { contains: dto.descriptionContains, mode: queryMode },
+      },
+      orderBy: { title: dto.orderTitleBy },
+      include: { cards: true },
+      skip: dto.skip,
+      take: dto.take ?? 10,
+    });
   }
 
   @Get(':id')
-  async findOne(@Param() { id }: FindOneDeckDto) {
+  async findOne(@Req() req: Request, @Param() { id }: FindOneDeckDto) {
     const deck = await this.decks.findOne({ id });
     if (!deck) {
       throw new NotFoundException();
+    }
+    if (
+      deck.visibility === DeckVisibility.PRIVATE &&
+      deck.authorId !== req.user.id
+    ) {
+      throw new ForbiddenException();
     }
     return deck;
   }

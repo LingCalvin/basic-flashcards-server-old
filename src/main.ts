@@ -11,7 +11,13 @@ async function bootstrap() {
   app.enableCors({ origin: config.get('CORS_ORIGIN'), credentials: true });
   app.use(helmet());
 
-  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
 
   await app.listen(config.get('PORT', 3000));
 }

@@ -32,8 +32,14 @@ export class DecksService {
     });
   }
 
-  findAll(params: Prisma.DeckFindManyArgs): Promise<Deck[]> {
-    return this.prisma.deck.findMany(params);
+  async findAll(
+    params: Prisma.DeckFindManyArgs,
+  ): Promise<{ decks: Deck[]; count: number }> {
+    const [count, decks] = await this.prisma.$transaction([
+      this.prisma.deck.count({ where: params.where }),
+      this.prisma.deck.findMany(params),
+    ]);
+    return { decks, count };
   }
 
   findOne(where: Prisma.DeckWhereUniqueInput): Promise<Deck | null> {
