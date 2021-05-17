@@ -1,10 +1,17 @@
-import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Throttle } from '@nestjs/throttler';
-import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { VerifyAccessTokenDto } from './dto/verify-access-token.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 @Throttle(
@@ -16,19 +23,17 @@ export class AuthController {
 
   @Post('access-tokens')
   @UseGuards(GoogleAuthGuard)
-  async googleAuth(@Req() req, @Res({ passthrough: true }) res: Response) {
+  async googleAuth(@Req() req) {
     const accessToken = await this.authService.loginOrRegister(req.user);
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: true,
-    });
     return { accessToken, decodedAccessToken: this.jwt.decode(accessToken) };
   }
 
-  @Get('token-info')
-  @UseGuards(JwtAuthGuard)
-  verifyAccessToken(@Req() { user }: Request) {
-    return { sub: user.id };
+  @Get('access-tokens/:token')
+  async verifyAccessToken(@Param() { token }: VerifyAccessTokenDto) {
+    try {
+      return await this.jwt.verifyAsync(token);
+    } catch {
+      throw new NotFoundException();
+    }
   }
 }
