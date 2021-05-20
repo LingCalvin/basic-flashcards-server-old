@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import OptionalJwtAuthGuard from 'src/auth/guards/optional-jwt-auth.guard';
 import { DecksService } from './decks.service';
 import { CreateDeckDto } from './dto/create-deck.dto';
 import { FindAllDecksDto } from './dto/find-all-decks.dto';
@@ -39,17 +40,32 @@ export class DecksController {
   }
 
   @Get()
-  async findAll(@Query() dto: FindAllDecksDto) {
-    // TODO: Do not return private decks for people who are not the author
+  @UseGuards(OptionalJwtAuthGuard)
+  async findAll(@Req() req: Request, @Query() dto: FindAllDecksDto) {
     const queryMode = dto.caseInsensitive ? 'insensitive' : 'default';
     return this.decks.findAll({
       where: {
-        title: {
-          equals: dto.titleEquals,
-          contains: dto.titleContains,
-          mode: queryMode,
-        },
-        description: { contains: dto.descriptionContains, mode: queryMode },
+        OR: [
+          {
+            title: {
+              equals: dto.titleEquals,
+              contains: dto.titleContains,
+              mode: queryMode,
+            },
+            description: { contains: dto.descriptionContains, mode: queryMode },
+            visibility: 'PUBLIC',
+          },
+          {
+            authorId: req.user?.id ?? '00000000-0000-0000-0000-000000000000',
+            title: {
+              equals: dto.titleEquals,
+              contains: dto.titleContains,
+              mode: queryMode,
+            },
+            description: { contains: dto.descriptionContains, mode: queryMode },
+            visibility: 'PRIVATE',
+          },
+        ],
       },
       orderBy: { title: dto.orderTitleBy },
       include: { cards: true },
@@ -59,6 +75,7 @@ export class DecksController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   async findOne(@Req() req: Request, @Param() { id }: FindOneDeckDto) {
     const deck = await this.decks.findOne({ id });
     if (!deck) {
@@ -66,7 +83,7 @@ export class DecksController {
     }
     if (
       deck.visibility === DeckVisibility.PRIVATE &&
-      deck.authorId !== req.user.id
+      deck.authorId !== req.user?.id
     ) {
       throw new ForbiddenException();
     }
