@@ -11,7 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { VerifyAccessTokenDto } from './dto/verify-access-token.dto';
-import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { LocalAuthGuard } from './guards/local-auth.guard';
 
 @Controller('auth')
 @Throttle(
@@ -22,10 +22,9 @@ export class AuthController {
   constructor(private authService: AuthService, private jwt: JwtService) {}
 
   @Post('access-tokens')
-  @UseGuards(GoogleAuthGuard)
-  async googleAuth(@Req() req) {
-    const accessToken = await this.authService.loginOrRegister(req.user);
-    return { accessToken, decodedAccessToken: this.jwt.decode(accessToken) };
+  @UseGuards(LocalAuthGuard)
+  async login(@Req() { user }) {
+    return this.authService.createAccessToken(user);
   }
 
   @Get('access-tokens/:token')
