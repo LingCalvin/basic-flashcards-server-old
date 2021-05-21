@@ -16,6 +16,7 @@ import {
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import OptionalJwtAuthGuard from 'src/auth/guards/optional-jwt-auth.guard';
+import { NIL } from 'uuid';
 import { DecksService } from './decks.service';
 import { CreateDeckDto } from './dto/create-deck.dto';
 import { FindAllDecksDto } from './dto/find-all-decks.dto';
@@ -56,7 +57,7 @@ export class DecksController {
             visibility: 'PUBLIC',
           },
           {
-            authorId: req.user?.id ?? '00000000-0000-0000-0000-000000000000',
+            authorId: req.user?.id ?? NIL,
             title: {
               equals: dto.titleEquals,
               contains: dto.titleContains,
