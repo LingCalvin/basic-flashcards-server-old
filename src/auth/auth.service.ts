@@ -18,7 +18,7 @@ export class AuthService {
 
   async checkTokenRevoked(jti: string): Promise<boolean> {
     return (
-      (await this.prisma.revokedTokens.findUnique({ where: { jti } })) === null
+      (await this.prisma.revokedTokens.findUnique({ where: { jti } })) !== null
     );
   }
 

@@ -24,7 +24,11 @@ export class AuthController {
   @Post('access-tokens')
   @UseGuards(LocalAuthGuard)
   async login(@Req() { user }) {
-    return this.authService.createAccessToken(user);
+    const accessToken = await this.authService.createAccessToken(user);
+    return {
+      accessToken,
+      decodedAccessToken: await this.jwt.decode(accessToken),
+    };
   }
 
   @Get('access-tokens/:token')
